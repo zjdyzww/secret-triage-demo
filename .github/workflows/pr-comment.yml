@@ -1,0 +1,25 @@
+name: pr-triage-comment
+on:
+  pull_request:
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 造假报告
+        run: |
+          cat > gitleaks.json <<'JSON'
+          [
+            {"File":"rules/aws.yml","StartLine":1,"RuleID":"aws-access-token"},
+            {"File":"tests/redact.spec.ts","StartLine":1,"RuleID":"aws-access-token"},
+            {"File":"src/leak.js","StartLine":1,"RuleID":"github-pat"}
+          ]
+          JSON
+      - uses: zjdyzww/secret-triage-action@v1
+        with:
+          report: gitleaks.json
+          fail-on-real: 'false'
+          pr-comment: 'true'
