@@ -1,0 +1,1 @@
+const fakeAws = "AKIAIOSFODNN7EXAMPLE"

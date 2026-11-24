@@ -1,0 +1,36 @@
+# 验证「分诊 → SARIF → GitHub 代码扫描」整条链：只有真发现进 Security 页，噪声不进。
+name: code-scanning-demo
+on: [workflow_dispatch, push]
+
+permissions:
+  contents: read
+  security-events: write   # 上传 SARIF 必需
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 造假报告（1 真 + 2 噪声）
+        run: |
+          cat > gitleaks.json <<'JSON'
+          [
+            {"File":"rules/aws.yml","StartLine":1,"RuleID":"aws-access-token"},
+            {"File":"tests/redact.spec.ts","StartLine":1,"RuleID":"aws-access-token"},
+            {"File":"src/leak.js","StartLine":1,"RuleID":"github-pat"}
+          ]
+          JSON
+
+      - name: 分诊并产出 SARIF
+        uses: zjdyzww/secret-triage-action@v1
+        with:
+          report: gitleaks.json
+          sarif-output: triage.sarif
+          fail-on-real: 'false'
+
+      - name: 上传到代码扫描（这一步才是真正的"净化 Security 页"）
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: triage.sarif
+          category: secret-triage
